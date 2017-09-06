@@ -1,0 +1,845 @@
+using System;
+using System.Data;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using controllers;
+using Model;
+using Model.Classes;
+
+namespace 
+    public partial class cadastroContrato : System.Web.UI.Page
+    {
+        Util uteis = new Util();
+
+        controllerContrato controllContrato = null;
+
+        controllerCliente controllCliente = null;
+
+        controllerTipoServico controllTipoServico = null;
+
+        controllerCentroCusto controllCentroCusto = null;
+
+        controllerCentroServico controllCentroServico = null;
+
+        controllerServicoVinculado controllServicoVinculado = null;
+
+        controllerContratoTipoServico controllContratoTipoServico = null;
+
+        #region eventos da pagina
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                Int32 id = 0;
+
+
+
+                if (Convert.ToInt32(Session["id_user_cont"]) == 1)
+                {
+                    Response.Redirect("logout.aspx");
+
+                    Response.End();
+                }
+
+                if (!Page.IsPostBack)
+                {
+                    btnExcluirServicos.Attributes.Add("style", "display:none;");
+
+                    btnAddGridViewServicos.Attributes.Add("style", "display:none;");
+
+                    fctCarregaCliente();
+
+                    fctCarregaCentroServico();
+
+                    Session.Remove("listaCentroServico");
+
+                    Session.Remove("listaCentroServicoExcluidos");
+
+                    Session.Remove("listaServicoVinculado");
+
+                    Session.Remove("listaServicoVinculadoExcluidos");
+
+                    if (Request["id"] != null)
+                    {
+
+                        if (Int32.TryParse(Request["id"].ToString(), out id))
+                        {
+                            ViewState.Add("id", id);
+                        }
+                        else
+                        {
+                            uteis.addTexto("Paramentro incorreto");
+                        }
+                        if (!uteis.exiteTexto())
+                        {
+                            fctBuscaDados();
+
+                        }
+                        else
+                        {
+                            pnlerros.Controls.Add(uteis.listaTexto(2));
+
+                            pnlerros.Visible = true;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+        protected void Page_LoadComplete(object sender, EventArgs e)
+        {
+            try
+            {
+                if (controllContrato != null)
+                {
+                    controllContrato.Dispose();
+                    controllContrato = null;
+                }
+                if (controllCliente != null)
+                {
+                    controllCliente.Dispose();
+                    controllCliente = null;
+                }
+                if (controllTipoServico != null)
+                {
+                    controllTipoServico.Dispose();
+                    controllTipoServico = null;
+                }
+                if (controllCentroCusto != null)
+                {
+                    controllCentroCusto.Dispose();
+                    controllCentroCusto = null;
+                }
+                if (controllCentroServico != null)
+                {
+                    controllCentroServico.Dispose();
+                    controllCentroServico = null;
+                }
+                if (controllServicoVinculado != null)
+                {
+                    controllServicoVinculado.Dispose();
+                    controllServicoVinculado = null;
+                }
+                if (controllContratoTipoServico != null)
+                {
+                    controllContratoTipoServico.Dispose();
+                    controllContratoTipoServico = null;
+                }
+            }
+
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+
+        #endregion
+
+        private void fctBuscaDados()
+        {
+            try
+            {
+                controllContrato = new controllerContrato();
+
+                controllContratoTipoServico = new controllerContratoTipoServico();
+
+                voContrato vo = new voContrato();
+
+                if (ViewState["id"] != null)
+                {
+                    vo.Id = Convert.ToInt32(ViewState["id"]);
+                }
+
+                vo = controllContrato.consulta(vo);
+                
+                if (vo != null)
+                {
+                    Session.Remove("listaContratoTipoServicoExcluidos");
+
+                    Session.Remove("listaContratoTipoServico");
+
+                    dblCliente.SelectedValue = vo.IdCliente.ToString();
+
+                    txtNomeContrato.Text = vo.NomeContrato;
+
+                    Session["id_user_cont"] = vo.IdUsuario.ToString();
+
+                    if (vo.StatusContrato == 2) rdoNegociacao.Checked = true;
+
+                    if (vo.StatusContrato == 1) rdoAtivo.Checked = true;
+
+                    if (vo.StatusContrato == 0) rdoEncerrado.Checked = true;
+
+                    txtDataCadastro.Text = vo.DataCadastro.ToString();
+
+                    txtDataEncerramento.Text = vo.DataEncerramento.ToString();
+
+                    ViewState.Add("id", vo.Id);
+
+                    voContratoTipoServico voIncluso = new voContratoTipoServico();
+
+                    voIncluso.Id_Con = vo.Id;
+
+                    List<voContratoTipoServico> ContratoTipoServicos = controllContratoTipoServico.lista(voIncluso);
+
+                  
+                    
+                    Session.Add("listaContratoTipoServicos", ContratoTipoServicos);
+
+                    grdlista.DataSource = ContratoTipoServicos;
+                    
+                    grdlista.DataBind();
+
+                }
+                else
+                {
+                    throw new Exception("Registro não encontrado");
+                }
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+
+        protected void btnSalvar_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                voContrato vo = new voContrato();
+
+                controllContrato = new controllerContrato();
+
+                bool ret = true;
+
+                if (txtNomeContrato.Text.Trim() == "")
+                {
+                    uteis.addTexto("Informe corretamente o nome contrato");
+                }
+
+                if (txtDataCadastro.Text.Trim() == "")
+                {
+                    uteis.addTexto("Informe corretamente a data de cadastro");
+                }
+
+                if (ViewState["id"] != null)
+                {
+                    vo.Id = Convert.ToInt32(ViewState["id"]);
+                }
+
+                if (uteis.exiteTexto())
+                {
+                    pnlerros.Controls.Add(uteis.listaTexto(3));
+                    pnlerros.Visible = true;
+                }
+                else
+                {
+                    vo.IdCliente = Convert.ToInt32(dblCliente.SelectedValue);
+
+                    vo.NomeContrato = txtNomeContrato.Text.Trim();
+
+                    vo.DataCadastro = Convert.ToDateTime(txtDataCadastro.Text);
+
+                    vo.DataEncerramento = Convert.ToDateTime(txtDataEncerramento.Text);
+
+                    vo.IdUsuario = Convert.ToInt32(Session["id_user_cont"]);
+
+                    if (rdoNegociacao.Checked) vo.StatusContrato = 2;
+
+                    if (rdoAtivo.Checked) vo.StatusContrato = 1;
+
+                    if (rdoEncerrado.Checked) vo.StatusContrato = 0;
+
+                    controllContrato = new controllerContrato();
+
+                    voContratoTipoServico voContratoTipSer = null;
+
+                    List<voContrato> listagem = new List<voContrato>();
+
+                    controllContratoTipoServico = new controllerContratoTipoServico();
+
+                    voServicoVinculado voServVinc = null;
+
+                    List<voServicoVinculado> listaServVinc = null;
+
+                    for (int i = 0; i < grdlista.Rows.Count; i++)
+                    {
+
+                        voContratoTipSer = new voContratoTipoServico();
+
+                        HiddenField field = grdlista.Rows[i].FindControl("hdnCentroServicoId") as HiddenField;
+
+                        if (field.Value != "")
+                        {
+
+                            voContratoTipSer.CentroServico.Id = Convert.ToInt32(field.Value);
+
+                        }
+                        
+                        TextBox txtTipoServicosDescricao = (TextBox)grdlista.Rows[i].FindControl("txtTipoServicosDescricao");
+
+                        voContratoTipSer.CentroServico.TipoServicos.Descricao = txtTipoServicosDescricao.Text;
+
+                        listaServVinc = (List<voServicoVinculado>)Session["listaServicoVinc" + voContratoTipSer.CentroServico.Id];
+
+                        voContratoTipSer.ServicoVinculados = listaServVinc;
+
+                        vo.ContratoTipoServicos.Add(voContratoTipSer);
+
+                    }
+                    if (vo.Id == 0)
+                    
+                    {
+                        vo = controllContrato.incluir(vo);
+
+                        foreach (var voConTipServ in vo.ContratoTipoServicos)
+                        {
+                            if (voConTipServ.Id_Con_Tip == 0)
+                            {
+                                voConTipServ.Id_Con = vo.Id;
+                                controllContratoTipoServico.incluirTipoServico(voConTipServ);
+
+                                foreach (var item in voConTipServ.ServicoVinculados)
+                                {
+                                    controllContratoTipoServico.incluirServicoVinculado(item , voConTipServ.Id_Con_Tip);
+                                }
+                            }
+
+                        }
+
+                    }
+
+
+                    if (ret)
+                    {
+                        Session.Remove("listaContratoTipoServicoExcluido");
+
+                        Session.Remove("listaContratoTipoServico");
+                        
+                        Session.Remove("listaServicoVinculado");
+
+                        Session.Remove("listaServicoVinculadoExcluidos");
+
+                        tbldados.Visible = false;
+                        pnlerros.Visible = false;
+                        pnlSucesso.Visible = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+
+        protected void btnSim_Click(object sender, EventArgs e)
+        {
+            if (ViewState["Id"] != null)
+            {
+                Int32 Id = Convert.ToInt32(ViewState["Id"]);
+
+                Response.Redirect("cadastroContrato.aspx?id=" + Id.ToString());
+            }
+        }
+
+        private void fctCarregaCliente()
+        {
+            try
+            {
+                dblCliente.Items.Clear();
+
+                controllCliente = new controllerCliente();
+
+                voCliente voCliente = new voCliente();
+
+                List<voCliente> Clientes = controllCliente.listaNet(voCliente);
+
+                ListItem item = new ListItem("", "0");
+
+                dblCliente.Items.Add(item);
+
+                foreach (voCliente vol in Clientes)
+                {
+                    item = new ListItem(vol.NomeFantasia, vol.Id.ToString());
+
+                    dblCliente.Items.Add(item);
+                }
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+
+        }
+
+        private void fctCarregaCentroServico()
+        {
+            try
+            {
+
+                dblCentroServico.Items.Clear();
+
+                controllCentroServico = new controllerCentroServico();
+
+                voCentroServico voCentro = new voCentroServico();
+
+                List<voCentroServico> CentroServicos = controllCentroServico.listaServico(voCentro);
+
+                ListItem item = new ListItem("", "0");
+
+                dblCentroServico.Items.Add(item);
+
+                foreach (voCentroServico vol in CentroServicos)
+                {
+                    item = new ListItem(vol.CentroCustos.Descricao + " - " + vol.TipoServicos.Descricao, vol.Id.ToString());
+
+                    dblCentroServico.Items.Add(item);
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+
+                pnlerros.Visible = true;
+            }
+
+        }
+
+        public void btnAddCentroServico_Click(object sender, EventArgs e)
+        {
+            if (dblCentroServico.SelectedValue.Equals("0"))
+            {
+                uteis.addTexto("Informe o tipo servico");
+            }
+
+            if (uteis.exiteTexto())
+            {
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+
+            else
+            {
+
+                List<voContratoTipoServico> ContratoTipoServicos = new List<voContratoTipoServico>();
+
+                if (Session["listaContratoTipoServico"] != null)
+
+                    ContratoTipoServicos = (List<voContratoTipoServico>)Session["listaContratoTipoServico"];
+
+                if (ContratoTipoServicos.Exists(sv => sv.CentroServico.TipoServicos.Descricao == dblCentroServico.SelectedItem.Text))
+                {
+                    uteis.addTexto("Já existe este contrato tipo serviço cadastrado");
+                    
+                    pnlerros.Controls.Add(uteis.listaTexto(3));
+                    
+                    pnlerros.Visible = true;
+                }
+                else
+                {
+                    voContratoTipoServico vp = new voContratoTipoServico();
+                    
+                    vp.CentroServico.TipoServicos.Descricao = dblCentroServico.SelectedItem.Text;
+                    
+                    vp.Id_Centro_Servico = Convert.ToInt32(dblCentroServico.SelectedValue);
+
+                    controllContratoTipoServico = new controllerContratoTipoServico();
+
+                    ContratoTipoServicos.Add(vp);
+
+                    Session.Add("listaContratoTipoServico", ContratoTipoServicos);
+
+                    grdlista.DataSource = ContratoTipoServicos;
+
+                    grdlista.DataBind();
+                }
+            }
+        }
+
+        protected void grdlista_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            try
+            {
+                if (e.Row.DataItem != null)
+                {
+                 
+                     voContratoTipoServico vo = (voContratoTipoServico)e.Row.DataItem;
+
+                    Image imgEdit = (Image)e.Row.FindControl("imgEdit");
+
+                    Image ImgDel = (Image)e.Row.FindControl("ImgDel");
+
+                    String urlEdit = "cadastroContrato.aspx?op=E&id=" + vo.Id.ToString();
+
+                    String urlexcluir = "cadastroContrato.aspx?op=E&id=" + vo.Id.ToString();
+
+                    // PEGA O ID QUE ESTA CARREGADO NO ASPX
+                    //HiddenField hdnTipoServicosId = (HiddenField)e.Row.FindControl("hdnTipoServicosId");
+                    //hdnIdCentroServico.Value = vo..ToString();
+
+                    // PEGA O ID QUE ESTA CARREGADO NO ASPX
+                    HiddenField hdnCentroServicoId = (HiddenField)e.Row.FindControl("hdnCentroServicoId");
+
+                    // PEGA O ID QUE ESTA CARREGADO NO ASPX
+                    HiddenField hdnContratoId = (HiddenField)e.Row.FindControl("hdnContratoId");
+
+
+
+                    if (imgEdit != null)
+                    {
+                        imgEdit.Attributes.Add("onclick", "javascript: AddGridViewServico('" + hdnCentroServicoId.Value + "');");
+
+                        imgEdit.Attributes.Add("style", "cursor: pointer");
+
+                        imgEdit.Visible = (Convert.ToInt32(Session["ind_niv_usu"]) == 0);
+                    }
+
+
+                    if (ImgDel != null)
+                    {
+                        ImgDel.Attributes.Add("onclick", "javascript: ExclusaoServicoCentroCusto('" + e.Row.RowIndex + "');");
+
+                        ImgDel.Attributes.Add("style", "cursor: pointer");
+
+                        ImgDel.Visible = (Convert.ToInt32(Session["ind_niv_usu"]) == 0);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+
+                pnlerros.Visible = true;
+            }
+        }
+
+        protected void grdservicos_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            try
+            {
+                if (e.Row.DataItem != null)
+                {
+                    voServicoVinculado vo = (voServicoVinculado)e.Row.DataItem;
+
+                    //TextBox nom_serv_vinc = (TextBox)e.Row.FindControl("nom_serv_vinc");
+                    //txtnom_serv_vinc.Text = vo.nom_serv_vinc.ToString();
+
+                    // PEGA O ID QUE ESTA CARREGADO NO ASPX
+                    HiddenField hdnServicoVinculadosId = (HiddenField)e.Row.FindControl("hdnServicoVinculadosId");
+                
+
+                }
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+
+                pnlerros.Visible = true;
+            }
+        }
+
+        protected void grdlista_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+            //List<voCentroServico> CentroServicos = new List<voCentroServico>();
+
+            //voCentroServico vp = new voCentroServico();
+
+            //controllCentroServico = new controllerCentroServico();
+
+            //voCentroServico vo = new voCentroServico();
+
+            //List<voCentroServico> voIn = controllCentroServico.listaServico(vo);
+
+            //CentroServicos.Add(vp);
+
+            //Session.Add("listaCentroServico", CentroServicos);
+
+            //grdlista.DataSource = CentroServicos;
+
+            //grdlista.DataBind();
+
+        }
+
+        protected void txtValorServico_TextChanged(object sender, EventArgs e)
+        {
+            List<voServicoVinculado> listaServVinc = new List<voServicoVinculado>();
+
+            voServicoVinculado voServVinc = null;
+
+            for (int i = 0; i < grdservicos.Rows.Count; i++)
+            {
+
+                voServVinc = new voServicoVinculado();
+
+           
+
+                HiddenField fieldTipoServico = grdservicos.Rows[i].FindControl("hdnTipoServicosId") as HiddenField;
+
+                if (fieldTipoServico.Value != "")
+                {
+                    voServVinc.TipoServicos.Id = Convert.ToInt32(fieldTipoServico.Value);
+                }
+
+                TextBox txtnom_serv_vinc = (TextBox)grdservicos.Rows[i].FindControl("txtnom_serv_vinc");
+
+                voServVinc.nom_serv_vinc = txtnom_serv_vinc.Text;
+
+                TextBox txtValorServico = (TextBox)grdservicos.Rows[i].FindControl("txtValorServico");
+
+                voServVinc.ValorServVincu = Convert.ToDecimal(txtValorServico.Text);
+                
+                listaServVinc.Add(voServVinc);
+
+            }
+
+            if (Session["listaServicoVinc" + hdnAddGridViewServicos.Value] != null)
+
+                Session.Remove("listaServicoVinc" + hdnAddGridViewServicos.Value);
+
+            Session.Add("listaServicoVinc" + hdnAddGridViewServicos.Value, listaServVinc);
+
+        }
+
+        protected void grdlista_SelectedIndexChanging(object sender, GridViewSelectEventArgs e)
+        {
+
+            //List<voCentroServico> CentroServicos = new List<voCentroServico>();
+
+            //voCentroServico vp = new voCentroServico();
+
+            //controllCentroServico = new controllerCentroServico();
+
+            //voCentroServico vo = new voCentroServico();
+
+            //List<voCentroServico> voIn = controllCentroServico.listaServico(vo);
+
+            //CentroServicos.Add(vp);
+
+            //Session.Add("listaCentroServico", CentroServicos);
+
+            //controllCentroServico = new controllerCentroServico();
+
+            ////voCentroServico vo = new voCentroServico();
+
+            //List<voCentroServico> lista = controllCentroServico.listaServico(vo);
+
+            //Session.Add("listaCentroServicoBanco", lista);
+
+            //grdlista.DataSource = CentroServicos;
+
+            //grdlista.DataBind();
+
+        }
+
+        public void btnRemoveServico_Click(object sender, EventArgs e)
+        {
+
+            voCentroServico vo = new voCentroServico();
+
+            controllCentroServico = new controllerCentroServico();
+
+            List<voCentroServico> Servicos = new List<voCentroServico>();
+
+            var itemToRemove = Servicos.SingleOrDefault(LSTServicos => LSTServicos.TipoServicos.Descricao == dblCentroServico.SelectedItem.ToString());
+            if (itemToRemove != null)
+            {
+                Servicos.Remove(itemToRemove);
+            }
+            grdlista.DataSource = null;
+            grdlista.DataSource = Servicos;
+            grdlista.DataBind();
+        }
+
+        void excluirServico(int idServico)
+        {
+
+            List<voCentroServico> ServicosExcluidos = new List<voCentroServico>();
+
+            List<voCentroServico> Servicos = (List<voCentroServico>)Session["listaCentroServico"];
+
+
+            if (Session["listaCentroServicoExcluido"] != null)
+            {
+                ServicosExcluidos = (List<voCentroServico>)Session["listaCentroServicoExcluido"];
+            }
+
+            ServicosExcluidos.Add(Servicos.Find(sv => sv.Id == idServico));
+
+            Servicos.Remove(Servicos.Find(sv => sv.Id == idServico));
+
+            Session.Add("listaCentroServico", Servicos);
+
+            Session.Add("listaCentroServicoExcluido", ServicosExcluidos);
+
+            grdlista.DataSource = Servicos;
+            
+            grdlista.DataBind();
+        }
+
+        protected void btnExcluirServicos_Click(object sender, EventArgs e)
+        {
+            try
+            {
+
+                if (hdnExcluirServicos.Value != "")
+                {
+
+                    int index = Convert.ToInt32(hdnExcluirServicos.Value);
+
+                    List<voCentroServico> ServicosExcluidos = new List<voCentroServico>();
+
+                    List<voCentroServico> Servicos = (List<voCentroServico>)Session["listaCentroServico"];
+
+                    if (Session["listaCentroServicoExcluido"] != null)
+                    {
+                        ServicosExcluidos = (List<voCentroServico>)Session["listaCentroServicoExcluido"];
+                    }
+
+                    voCentroServico voRemove = Servicos[index];
+
+                    ServicosExcluidos.Add(voRemove);
+
+                    Servicos.Remove(voRemove);
+
+                    Session.Add("listaCentroServico", Servicos);
+
+                    Session.Add("listaCentroServicoExcluido", ServicosExcluidos);
+
+                    grdlista.DataSource = Servicos;
+
+                    grdlista.DataBind();
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+        }
+
+        protected void btnAddGridViewServicos_Click(object sender, EventArgs e)
+        {
+            fctBuscaDadosGridServicos();
+
+        }
+        public void fctBuscaDadosGridServicos()
+        {
+            try
+            {
+
+
+                controllCentroServico = new controllerCentroServico();
+
+                voCentroServico voCentro = new voCentroServico(); 
+                    
+                voCentro.Id = Convert.ToInt32(hdnAddGridViewServicos.Value);
+
+                hdnIdCentroServicoConsultado.Value = voCentro.Id.ToString();
+                
+                voCentro = controllCentroServico.consulta(voCentro);
+
+                controllServicoVinculado = new controllerServicoVinculado();
+
+                voServicoVinculado vo = new voServicoVinculado();
+
+                vo.IdTipoServico = voCentro.TipoServicos.Id;
+
+                List<voServicoVinculado> consulta = controllServicoVinculado.lista2(vo);
+                
+                if (Session["listaServicoVinc" + voCentro.Id] != null)
+                {
+                    Session.Remove("listaServicoVinc" + voCentro.Id);
+                }
+                
+                Session.Add("listaServicoVinc" + voCentro.Id, consulta);
+                
+                grdservicos.DataSource = consulta;
+                
+                grdservicos.DataBind();
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+        protected void grdservicos_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+            List<voServicoVinculado> ServicoVinculados = new List<voServicoVinculado>();
+
+            voServicoVinculado vp = new voServicoVinculado();
+
+            controllServicoVinculado = new controllerServicoVinculado();
+
+            voServicoVinculado vo = new voServicoVinculado();
+
+            List<voServicoVinculado> voIn = controllServicoVinculado.lista(vo);
+
+            ServicoVinculados.Add(vp);
+
+            Session.Add("listaServicoVinculados", ServicoVinculados);
+
+            grdservicos.DataSource = ServicoVinculados;
+
+            grdservicos.DataBind();
+
+        }
+
+        protected void grdservicos_SelectedIndexChanging(object sender, GridViewSelectEventArgs e)
+        {
+
+            List<voServicoVinculado> ServicoVinculdados = new List<voServicoVinculado>();
+
+            voServicoVinculado vp = new voServicoVinculado();
+
+            controllServicoVinculado = new controllerServicoVinculado();
+
+            voServicoVinculado vo = new voServicoVinculado();
+
+            List<voServicoVinculado> voIn = controllServicoVinculado.lista(vo);
+
+            ServicoVinculdados.Add(vp);
+
+            Session.Add("listaServicoVinculdados", ServicoVinculdados);
+
+            controllCentroServico = new controllerCentroServico();
+
+            //voCentroServico vo = new voCentroServico();
+
+            //List<voCentroServico> lista = controllCentroServico.listaServico(vo);
+
+            //Session.Add("listaCentroServicoBanco", lista);
+
+            grdservicos.DataSource = ServicoVinculdados;
+
+            grdservicos.DataBind();
+
+        }
+    }
+}
