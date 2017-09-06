@@ -1,0 +1,251 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+using Model.Classes;
+using Model;
+using controllers;
+
+namespace 
+
+{
+    public partial class cadastroEquipe : System.Web.UI.Page
+    {
+        Util uteis = new Util();
+        controllerEquipe controlEquipe = null;
+
+        #region eventos da pagina
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                Int32 id = 0;
+
+                if (Convert.ToInt32(Session["ind_niv_usu_cont"]) == 1)
+                {
+                    Response.Redirect("logout.aspx");
+                    Response.End();
+                }                
+
+                if (!Page.IsPostBack)
+                {
+
+                    fctCarregaClientes();
+
+                    if (Request["id"] != null)
+                    {
+                        if (Int32.TryParse(Request["id"].ToString(), out id))
+                        {
+                            ViewState.Add("id", id);
+                        }
+                        else
+                        {
+                            uteis.addTexto("Paramentro incorreto");
+                        }
+
+                        if (!uteis.exiteTexto())
+                        {
+                            fctBuscaDados();
+                        }
+                        else
+                        {
+                            pnlerros.Controls.Add(uteis.listaTexto(2));
+                            pnlerros.Visible = true;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+
+        protected void Page_LoadComplete(object sender, EventArgs e)
+        {
+            try
+            {
+                if (controlEquipe != null)
+                {
+                    controlEquipe.Dispose();
+                    controlEquipe = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+        #endregion
+
+        #region metodos
+
+        private void fctCarregaClientes()
+        {
+            controllerCliente controlerCli = null;
+
+            try
+            {
+                dblCliente.Items.Clear();
+
+                controlerCli = new controllerCliente();
+
+                voCliente vo = new voCliente();
+
+                vo.TipoCliente = "E";
+                vo.IndStatus = -1;
+
+                List<voCliente> lista = controlerCli.lista(vo);
+
+                ListItem item = new ListItem("", "0");
+                dblCliente.Items.Add(item);
+
+                foreach (voCliente vo1 in lista)
+                {
+                    item = new ListItem(vo1.RazaoSocial, vo1.Id.ToString());
+                    dblCliente.Items.Add(item);
+                }
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+            finally
+            {
+                if (controlerCli != null)
+                {
+                    controlerCli.Dispose();
+                    controlerCli = null;
+                }
+            }
+        }
+
+        private void fctBuscaDados()
+        {
+            try{
+                voEquipe voParam = new voEquipe();
+
+                controlEquipe = new controllerEquipe();
+
+                if (ViewState["id"] != null)
+                {
+                    voParam.Id = Convert.ToInt32(ViewState["id"]);
+                }
+
+                voParam = controlEquipe.consulta(voParam);
+
+                if (voParam != null)
+                {
+                    txtNome.Text = voParam.Nome;                    
+                    dblCliente.SelectedValue = voParam.Cliente.Id.ToString();                  
+
+                }
+                else
+                {
+                    throw new Exception("Registro não encontrado");
+                }
+                
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+      
+
+        
+
+        #endregion
+
+        #region eventos dos controles
+        protected void btnSalvar_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                bool ret = true;
+
+                voEquipe vo = new voEquipe();
+
+                if (ViewState["id"] != null)
+                {
+                    vo.Id = Convert.ToInt32(ViewState["id"]);
+                }
+
+
+                if (txtNome.Text.Trim() == "")
+                {
+                    uteis.addTexto("Informe corretamente o nome");
+                }
+
+                if (dblCliente.SelectedValue.Equals("0"))
+                {
+                    uteis.addTexto("Informe corretamente a EPO");
+                }
+                
+
+
+                if (uteis.exiteTexto())
+                {
+                    pnlerros.Controls.Add(uteis.listaTexto(2));
+                    pnlerros.Visible = true;
+                }
+                else
+                {
+
+                    controlEquipe = new controllerEquipe();
+
+                    vo.Nome = txtNome.Text.Trim();
+                    
+                    vo.Cliente = new voCliente();                    
+                    vo.Cliente.Id = Convert.ToInt32(dblCliente.SelectedValue);
+                                        
+
+                    if (vo.Id == 0)
+                    {
+                        vo = controlEquipe.incluir(vo);
+                        ret = (vo.Id != 0);
+                    }
+                    else
+                    {
+                        ret = controlEquipe.alterar(vo);
+                    }
+
+                    if (ret)
+                    {
+                        pnlSucesso.Visible = true;
+                        tblform.Visible = false;
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+
+            }
+            finally {
+                if (controlEquipe != null)
+                {
+                    controlEquipe.Dispose();
+                    controlEquipe = null;
+                }
+            }
+        }       
+
+        #endregion
+
+    }
+}
