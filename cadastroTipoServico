@@ -1,0 +1,579 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using controllers;
+using Model;
+using Model.Classes;
+
+namespace
+{
+    public partial class cadastroTipoServico : System.Web.UI.Page
+    {
+        Util uteis = new Util();
+        controllerTipoServico controllTipoServico = null;
+        controllerServicoVinculado controllServicoVinculado = null;
+
+
+        #region eventos da pagina
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                Int32 id = 0;
+
+
+                if (Convert.ToInt32(Session["ind_niv_usu_cont"]) == 1)
+                {
+                    Response.Redirect("logout.aspx");
+                    Response.End();
+                }
+
+                if (!Page.IsPostBack)
+                {
+                    btnExcluirServicos.Attributes.Add("style", "display:none;");
+
+                    Session.Remove("listaServicoVinculadoExcluido");
+                    
+                    Session.Remove("listaServicoVinculado");
+
+                    if (Request["id"] != null)
+                    {
+                        
+                        if (Int32.TryParse(Request["id"].ToString(), out id))
+                        {
+                            ViewState.Add("id", id);
+                        }
+                        else
+                        {
+                            uteis.addTexto("Paramentro incorreto");
+                        }
+                        if (!uteis.exiteTexto())
+                        {
+                           /* if (Request.QueryString["op"] != null)
+                            {
+                                if (Request.QueryString["op"].ToString() == "E")
+                                {
+                                    int idServico = 0;
+
+                                    if (Int32.TryParse(Request["idServico"].ToString(), out idServico))
+                                    {
+                                        excluirServicoVinculado(idServico);
+                                    }
+                                }
+                            }*/
+
+                            fctBuscaDados();                                
+                        }
+                        else
+                        {
+                            pnlerros.Controls.Add(uteis.listaTexto(2));
+                            pnlerros.Visible = true;
+                        }
+                    }
+                    
+                }
+               
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+        protected void Page_LoadComplete(object sender, EventArgs e)
+        {
+            try
+            {
+                if (controllTipoServico != null)
+                {
+                    controllTipoServico.Dispose();
+                    controllTipoServico = null;
+                }
+                if (controllServicoVinculado != null)
+                {
+                    controllServicoVinculado.Dispose();
+                    controllServicoVinculado = null;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+
+        #endregion
+
+
+        private void fctBuscaDados()
+        {
+            try
+            {
+                controllTipoServico = new controllerTipoServico();
+
+                controllServicoVinculado = new controllerServicoVinculado();
+                
+                voTipoServico vo = new voTipoServico();
+
+                if (ViewState["id"] != null)
+                {
+                    vo.Id = Convert.ToInt32(ViewState["id"]);
+                    vo.CodSysCom = Convert.ToInt32(ViewState["CodSysCom"]);
+                }
+
+                vo = controllTipoServico.consulta(vo);
+
+                if (vo != null)
+                {
+                    Session.Remove("listaServicoVinculadoExcluido");
+                    Session.Remove("listaServicoVinculado");
+
+                    txtTipoServico.Text = vo.TipoServico;
+                    txtDescricao.Text = vo.Descricao;
+                    txtCodSysCom.Text = vo.CodSysCom.ToString();
+                    //campo codigo symphony
+                    
+                    if (vo.StatusTipo == 1) rdoAtivo.Checked = true;
+                    if (vo.StatusTipo == 0) rdoInativo.Checked = true;
+
+                    voServicoVinculado voIncluso = new voServicoVinculado();
+                    voIncluso.IdTipoServico = vo.Id;
+                    voIncluso.ServVincDesc = vo.ServVincDesc;
+                    List<voServicoVinculado> Servicos = controllServicoVinculado.lista(voIncluso);
+
+                    ViewState.Add("id", vo.Id);
+                    Session.Add("listaServicoVinculado", Servicos);
+                    
+                    grdlistaservicos.DataSource = Servicos;
+                    grdlistaservicos.DataBind();
+                }
+                else
+                {
+                    throw new Exception("Registro não encontrado");
+                }
+
+               
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+       
+        protected void btnSalvar_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                voTipoServico vo = new voTipoServico();
+                controllTipoServico = new controllerTipoServico();
+
+                bool ret = true;
+                if (txtTipoServico.Text.Trim() == "")
+                {
+                    uteis.addTexto("Informe corretamente o tipo de serviço");
+                }
+
+                if (txtDescricao.Text.Trim() == "")
+                {
+                    uteis.addTexto("Informe corretamente a descrição");
+                }
+
+                if (txtCodSysCom.Text.Trim() == "")
+                {
+                    txtCodSysCom.Text = "0";
+                }
+
+
+                if (ViewState["id"] != null)
+                {
+                    vo.Id = Convert.ToInt32(ViewState["id"]);
+                }
+
+                if (uteis.exiteTexto())
+                {
+                    pnlerros.Controls.Add(uteis.listaTexto(3));
+                    pnlerros.Visible = true;
+                }
+                else
+                {
+                    vo.TipoServico = txtTipoServico.Text.Trim();
+                    vo.Descricao = txtDescricao.Text.Trim();
+                    vo.CodSysCom = Convert.ToInt32(txtCodSysCom.Text.Trim());
+             //CLASSE = NULL
+             voServicoVinculado voServ = null;
+             //CRIA UM NOVO ESPAÇO NA MEMORIA PARA A CONTROLLER
+             controllServicoVinculado = new controllerServicoVinculado();
+
+             //LISTA A CLASSE VO SERVICOS NA VARIAVEL LISTAGEM E RECEBE NOVA LISTA
+             List<voServicoVinculado> listagem = new List<voServicoVinculado>();
+             //FOR, PASSA DENTRO DA LISTA, E AGUARDA O ID
+             for (int i = 0; i < grdlistaservicos.Rows.Count; i++)
+             {
+                 //CRIA UM NOVO SERVIÇO
+                 voServ = new voServicoVinculado();
+                 //PEGA O VALOR QUE ESTA NO ASPX, EM UM ELEMENTO HIDDEN COM O ID IdServicoVinculado
+                 HiddenField field = grdlistaservicos.Rows[i].FindControl("IdServicoVinculado") as HiddenField;
+                    if (field.Value != "") 
+                    {
+                        voServ.Id = Convert.ToInt32(field.Value);
+                    }
+                        //voServ.nom_serv_vinc = grdlistaservicos.Rows[i].Cells[0].Text;
+                        //COMO MUDOU DE UM ELEMENTO DATABOUND PARA UM TEXT, TEM QUE PEGAR A PROPRIEDADE TXT
+                        TextBox txtnom_serv_vinc = (TextBox)grdlistaservicos.Rows[i].FindControl("nom_serv_vinc");
+                        //CLS = TXT
+                        voServ.nom_serv_vinc = txtnom_serv_vinc.Text;
+                        //LISTAGEM.ADICIONAR (LISTA)
+                        //VERIFICA SE ESTA VAZIO O CAMPO
+                        if (voServ.nom_serv_vinc.Trim() == "")
+                        {
+                            //SE CAMPO ESTIVER VAZIO, DELETE BANCO
+                            controllServicoVinculado.excluir(voServ);
+                        }
+                            listagem.Add(voServ);
+            }
+
+
+            /*trata itens excludios*/
+
+             List<voServicoVinculado> ServicosExcluidos = new List<voServicoVinculado>();           
+
+
+             if (Session["listaServicoVinculadoExcluido"] != null)
+             {
+                 ServicosExcluidos = (List<voServicoVinculado>)Session["listaServicoVinculadoExcluido"];
+             }
+
+             foreach (voServicoVinculado voexc in ServicosExcluidos) {
+
+                 if (voexc.Id != 0)
+                 {
+                     controllServicoVinculado.excluir(voexc);
+                 }
+             
+             }
+
+                    /*
+                    //CRIA UM NOVO SERVIÇO
+                        voServ = new voServicoVinculado();
+                        voServ.IdTipoServico = vo.Id; 
+                    //CRIA UMA LISTA DE ITENS REMOVIDOS 
+                    List<voServicoVinculado> itensRemover = controllServicoVinculado.lista(voServ);
+                    // SE VIEWSTATE, BUSCA TIPO NÃO E NULO    
+                    //if (ViewState["buscaTipoServico"] != null)
+                    //LISTA DE ITENS REMOVIDOS = A LISTA QUE ESTA NO VIEWSTATE["BUSCATIPOSERVIÇO"]
+                    //VERIFICA JA EXISTE O MESMO SERVIÇO NO DB
+                    bool existeNome = false;
+                    foreach (voServicoVinculado item in itensRemover)
+                    {
+                        if (controllServicoVinculado.verificaNomeExistente(item))
+                        {
+                            uteis.addTexto("Serviço "+ item.nom_serv_vinc +"já cadastrado");
+                            existeNome = true;
+                        }
+                    }
+
+                    if (existeNome == true)
+                    {
+                        throw new Exception("");
+                    }
+                    // PEGA A LISTA QUE ESTA NO VIEW STATE, E COMPARA COM A LISTA QUE ESTA SALVA NA TELA, PARA REMOVER
+                        foreach (voServicoVinculado item in itensRemover)
+                        {
+                            // SE NÃO TEM NA LISTAGEM O L == ITEM.ID DA OUTRA LISTA)
+                            if (!listagem.Exists(l => l.Id == item.Id)) 
+                            {
+                                // MANDA PARA A CONTROLLER A FUNÇÃO EXCLUIR COM O PARAMETRO 
+                                controllServicoVinculado.excluir(item);
+                            }
+                        }
+                   */
+
+                    if (rdoAtivo.Checked) vo.StatusTipo = 1;
+                    if (rdoInativo.Checked) vo.StatusTipo = 0;
+                   
+
+                    if (vo.Id == 0)
+                    {
+                        vo = controllTipoServico.incluir(vo);
+
+                        foreach (voServicoVinculado item in listagem)
+                        {
+                            item.IdTipoServico = Convert.ToInt32(vo.Id);
+                                controllServicoVinculado.incluir(item);
+                            
+                        }
+                        pnlNovosTipoServico.Visible = true;
+                        ViewState.Add("id", vo.Id);
+                        
+                        if (vo.Id != 0) ret = true;
+                    }
+                    else
+                    { 
+                        ret = controllTipoServico.alterar(vo);
+                        
+                        foreach (voServicoVinculado item in listagem)
+                        {
+                            item.IdTipoServico = Convert.ToInt32(vo.Id);
+                            if (item.Id == 0)
+                            {
+                                controllServicoVinculado.incluir(item);
+
+                            }
+                            else
+                            {
+                                   controllServicoVinculado.alterar(item);
+
+                            }
+                        }
+                    }
+
+                    if (ret)
+                    {
+
+                        Session.Remove("listaServicoVinculadoExcluido");
+                        Session.Remove("listaServicoVinculado");
+
+                        tbldados.Visible = false;
+                        pnlerros.Visible = false;
+                        pnlSucesso.Visible = true;
+                    }                    
+                }            
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+
+        protected void btnSim_Click(object sender, EventArgs e)
+        {
+            if (ViewState["Id"] != null)
+            {
+                Int32 Id = Convert.ToInt32(ViewState["Id"]);
+
+                Response.Redirect("cadastroTipoServico.aspx?id=" + Id.ToString());            
+            }
+        }
+        private void fctListaTipoServicos()
+        {
+            try
+            {
+                controlServicoVinculado = new controllerServicoVinculado();
+                voServicoVinculado vo = new voServicoVinculado();
+
+                List<voServicoVinculado> lista = controlServicoVinculado.lista(vo);
+
+                grdlistaservicos.DataSource = lista;
+                grdlistaservicos.DataBind();
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+        protected void grdlistaservicos_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            try
+            {
+                if (e.Row.DataItem != null)
+                {
+                    voServicoVinculado vo = (voServicoVinculado)e.Row.DataItem;
+
+                    Image imgEdit = (Image)e.Row.FindControl("imgEdit");
+                    Image ImgDel = (Image)e.Row.FindControl("ImgDel");
+
+                    String urlEdit = "cadastroTipoServico.aspx?id=" + vo.Id.ToString();
+                    String urlexcluir = "cadastroTipoServico.aspx?op=E&id=" + vo.IdTipoServico.ToString() + "&idServico=" + vo.Id.ToString();
+
+                    //e.Row.Cells[0].Text = vo.Id.ToString();
+                    //e.Row.Cells[0].Attributes.Add("onclick", "javascript: location.href='" + urlEdit + "'");
+
+                    TextBox nom_serv_vinc = (TextBox)e.Row.FindControl("nom_serv_vinc");
+                    nom_serv_vinc.Text = vo.nom_serv_vinc.ToString();
+                    
+                    if (imgEdit != null)
+                    {
+                        imgEdit.Attributes.Add("onclick", "javascript: location.href='" + urlEdit + "'");
+                        imgEdit.Attributes.Add("style", "cursor: pointer");
+                    }
+
+
+                    if (ImgDel != null)
+                    {
+                        //ImgDel.Attributes.Add("onclick", "javascript: confirmaExclusaoServico('" + urlexcluir + "');");
+                        ImgDel.Attributes.Add("onclick", "javascript: ExclusaoServico('" + e.Row.RowIndex + "');");                        
+                        ImgDel.Attributes.Add("style", "cursor: pointer");
+
+                        ImgDel.Visible = (Convert.ToInt32(Session["ind_niv_usu"]) == 0 ); //se não for administrador, desabilita função de exclusão
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                uteis.addTexto(ex.Message);
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+        }
+        protected void grdlistaservicos_PageIndexChanging(object sender, GridViewPageEventArgs e)
+        {
+            grdlistaservicos.PageIndex = e.NewPageIndex;
+
+            if (Session["listaServicoVinculado"] != null)
+            {
+                List<voServicoVinculado> Servicos = (List<voServicoVinculado>)Session["listaServicoVinculado"];
+                grdlistaservicos.DataSource = Servicos;
+                grdlistaservicos.DataBind();
+
+            }
+        }
+
+        //HINDEN DA VISAO ATUAL , GRIND UM PARA VERIFICAR SE ESTA NA TELA , 
+        public void btnAddServico_Click(object sender, EventArgs e)
+        {
+            if (txtServVincDesc.Text.Trim() == "" )
+            {
+                uteis.addTexto("Informe o serviço vinculado");
+            }
+ 
+            if (uteis.exiteTexto())
+            {
+                pnlerros.Controls.Add(uteis.listaTexto(3));
+                pnlerros.Visible = true;
+            }
+
+            else
+            {
+                // RESERVA O ESPAÇO NA MEMORIA PARA A BIBLIOTECA DE CLASSES
+                //controllServicoVinculado = new controllerServicoVinculado();
+                //LISTA A CLASSE VOSERVIÇOS NA VARIAVEL SERVICOS, NOVA LISTA
+                List<voServicoVinculado> Servicos = new List<voServicoVinculado>();
+
+                if (Session["listaServicoVinculado"] != null)
+                    Servicos = (List<voServicoVinculado>)Session["listaServicoVinculado"];
+                
+                //SE LIST.EXIST
+                if (Servicos.Exists(sv => sv.nom_serv_vinc == txtServVincDesc.Text))
+                {   
+                    //ALERT , TRATA ERRO
+                    uteis.addTexto("Já existe este serviço cadastrado");
+                    pnlerros.Controls.Add(uteis.listaTexto(3));
+                    pnlerros.Visible = true;
+                }
+                else
+                {
+                    //SERVICOS.ADICIONA NOVA
+                    Servicos.Add(new voServicoVinculado()
+                    {
+                        Id = 0,
+                        nom_serv_vinc = txtServVincDesc.Text.Trim(),
+                    });
+
+                    Session.Add("listaServicoVinculado", Servicos);
+
+                    grdlistaservicos.DataSource = Servicos;
+                    grdlistaservicos.DataBind();
+                    txtServVincDesc.Text = "";
+                    txtServVincDesc.Focus();
+                }
+            }
+        }
+
+        public void btnRemoveServico_Click(object sender, EventArgs e)
+        {
+            //NOVA CLS VO
+            voServicoVinculado vo = new voServicoVinculado();
+            
+            //NOVA CONTROLLER
+            controllServicoVinculado = new controllerServicoVinculado();
+            
+            //NOVA LISTA DE VOSERVICOS EM SERVICOS
+            List<voServicoVinculado> Servicos = new List<voServicoVinculado>();
+            
+            var itemToRemove = Servicos.SingleOrDefault(LSTServicos => LSTServicos.ServVincDesc == txtServVincDesc.Text.ToString());
+            if (itemToRemove != null){
+                Servicos.Remove(itemToRemove);
+            }
+            grdlistaservicos.DataSource = null;
+            grdlistaservicos.DataSource = Servicos;
+            grdlistaservicos.DataBind();
+            txtServVincDesc.Text = "";
+            txtServVincDesc.Focus();
+        }
+
+        void excluirServicoVinculado(int idServico)
+        {
+
+            List<voServicoVinculado> ServicosExcluidos = new List<voServicoVinculado>();
+
+            List<voServicoVinculado> Servicos = (List<voServicoVinculado>)Session["listaServicoVinculado"];
+
+
+            if (Session["listaServicoVinculadoExcluido"] != null)
+            {
+                ServicosExcluidos = (List<voServicoVinculado>)Session["listaServicoVinculadoExcluido"];
+            }
+
+            ServicosExcluidos.Add(Servicos.Find(sv => sv.Id == idServico));
+
+            Servicos.Remove(Servicos.Find(sv => sv.Id == idServico));
+            
+            Session.Add("listaServicoVinculado", Servicos);
+            Session.Add("listaServicoVinculadoExcluido", ServicosExcluidos);
+
+            grdlistaservicos.DataSource = Servicos;
+            grdlistaservicos.DataBind();
+        }
+
+        
+        public controllerServicoVinculado controlServicoVinculado { get; set; }
+
+        protected void btnExcluirServicos_Click(object sender, EventArgs e)
+        {
+            try {
+                
+                if (hdnExcluirServicos.Value != "")
+                {
+
+                    int index = Convert.ToInt32(hdnExcluirServicos.Value);
+
+                    List<voServicoVinculado> ServicosExcluidos = new List<voServicoVinculado>();
+
+                    List<voServicoVinculado> Servicos = (List<voServicoVinculado>)Session["listaServicoVinculado"];
+
+                    if (Session["listaServicoVinculadoExcluido"] != null)
+                    {
+                        ServicosExcluidos = (List<voServicoVinculado>)Session["listaServicoVinculadoExcluido"];
+                    }
+
+                    voServicoVinculado voRemove = Servicos[index];
+                    ServicosExcluidos.Add(voRemove);
+
+                    Servicos.Remove(voRemove);
+
+                    Session.Add("listaServicoVinculado", Servicos);
+                    Session.Add("listaServicoVinculadoExcluido", ServicosExcluidos);
+
+                    grdlistaservicos.DataSource = Servicos;
+                    grdlistaservicos.DataBind();
+                }
+            }
+            catch (Exception ex)
+            { 
+            
+            }
+        }
+    }
+}
