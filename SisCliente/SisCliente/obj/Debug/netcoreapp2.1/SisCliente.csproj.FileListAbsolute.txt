@@ -1,0 +1,11 @@
+C:\Users\Dev\source\repos\SisCliente\SisCliente\bin\Debug\netcoreapp2.1\SisCliente.deps.json
+C:\Users\Dev\source\repos\SisCliente\SisCliente\bin\Debug\netcoreapp2.1\SisCliente.runtimeconfig.json
+C:\Users\Dev\source\repos\SisCliente\SisCliente\bin\Debug\netcoreapp2.1\SisCliente.runtimeconfig.dev.json
+C:\Users\Dev\source\repos\SisCliente\SisCliente\bin\Debug\netcoreapp2.1\SisCliente.dll
+C:\Users\Dev\source\repos\SisCliente\SisCliente\bin\Debug\netcoreapp2.1\SisCliente.pdb
+C:\Users\Dev\source\repos\SisCliente\SisCliente\obj\Debug\netcoreapp2.1\SisCliente.csprojAssemblyReference.cache
+C:\Users\Dev\source\repos\SisCliente\SisCliente\obj\Debug\netcoreapp2.1\SisCliente.csproj.CoreCompileInputs.cache
+C:\Users\Dev\source\repos\SisCliente\SisCliente\obj\Debug\netcoreapp2.1\SisCliente.AssemblyInfoInputs.cache
+C:\Users\Dev\source\repos\SisCliente\SisCliente\obj\Debug\netcoreapp2.1\SisCliente.AssemblyInfo.cs
+C:\Users\Dev\source\repos\SisCliente\SisCliente\obj\Debug\netcoreapp2.1\SisCliente.dll
+C:\Users\Dev\source\repos\SisCliente\SisCliente\obj\Debug\netcoreapp2.1\SisCliente.pdb
